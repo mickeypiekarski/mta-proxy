@@ -4,9 +4,25 @@ import requests
 from google.transit import gtfs_realtime_pb2
 from datetime import datetime
 import time
+import csv
+import io
 
 app = Flask(__name__)
 CORS(app)
+
+# Load direction labels from MTA Stations.csv at startup
+DIRECTION_LABELS = {}  # stop_id -> {"N": label, "S": label}
+try:
+    r = requests.get("http://web.mta.info/developers/data/nyct/subway/Stations.csv", timeout=10)
+    reader = csv.DictReader(io.StringIO(r.text))
+    for row in reader:
+        stop_id = row["GTFS Stop ID"].strip()
+        n_label = row.get("North Direction Label", "").strip()
+        s_label = row.get("South Direction Label", "").strip()
+        if stop_id:
+            DIRECTION_LABELS[stop_id] = {"N": n_label, "S": s_label}
+except Exception:
+    pass
 
 FEED_URLS = {
     "ace":    "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace",
@@ -153,10 +169,13 @@ def get_arrivals():
     if err:
         return jsonify({"error": err}), 500
 
+    dir_labels = DIRECTION_LABELS.get(stop, {})
     directions = []
     for d in ("N", "S"):
         arr = arrivals[d]
-        label = arr[0]["terminal"] if arr else ("Northbound" if d == "N" else "Southbound")
+        label = dir_labels.get(d, "").strip()
+        if not label:
+            label = arr[0]["terminal"] if arr else ("Northbound" if d == "N" else "Southbound")
         directions.append({
             "label": label,
             "arrivals": [{"mins": a["mins"], "route": a["route"], "terminal": a["terminal"]} for a in arr],
