@@ -157,7 +157,7 @@ def get_arrivals():
         label = arr[0]["terminal"] if arr else ("Northbound" if d == "N" else "Southbound")
         directions.append({
             "label": label,
-            "arrivals": [{"mins": a["mins"], "route": a["route"]} for a in arr],
+            "arrivals": [{"mins": a["mins"], "route": a["route"], "terminal": a["terminal"]} for a in arr],
         })
 
     return jsonify({
