@@ -38,8 +38,8 @@ TERMINAL_NAMES = {
     "M01N": "Forest Hills-71 Av",
     "M22S": "Middle Village-Metropolitan Av",
     # G
-    "G08N": "Court Sq",
-    "G21S": "Church Av",
+    "G22N": "Court Sq",
+    "F27S": "Church Av",
     # J/Z
     "J12N": "Jamaica Center",
     "M23S": "Broad St",
