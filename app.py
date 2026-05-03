@@ -3,6 +3,10 @@ import requests
 from google.transit import gtfs_realtime_pb2
 from datetime import datetime
 import time
+import zipfile
+import io
+import csv
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -18,40 +22,83 @@ FEED_URLS = {
     "sir":    "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si",
 }
 
-# Last stop ID -> terminal name
 TERMINAL_NAMES = {
-    # G
     "G08N": "Court Sq",       "G22S": "Church Av",
-    # A/C/E
     "A02N": "Inwood-207 St",  "H11N": "Far Rockaway",
     "H21N": "Rockaway Park",  "A65S": "Lefferts Blvd",
     "A55S": "Euclid Av",      "G05N": "Jamaica-179 St",
     "A27S": "World Trade Ctr",
-    # B/D
     "D01N": "Norwood-205 St", "D43S": "Coney Island",
-    # F/M
     "F01N": "Jamaica-179 St", "F35S": "Coney Island",
     "M01N": "Forest Hills",   "M22S": "Middle Village",
-    # J/Z
     "J12N": "Jamaica Ctr",    "J17S": "Broad St",
-    # L
     "L01N": "8 Av",           "L29S": "Canarsie",
-    # N/Q/R/W
     "R01N": "Astoria",        "N10S": "Coney Island",
     "R44S": "Bay Ridge-95 St","R27S": "Whitehall St",
-    # 1/2/3
     "101N": "Van Cortlandt",  "142S": "South Ferry",
     "201N": "Wakefield",      "239S": "Flatbush Av",
     "301N": "Harlem-148 St",  "L24S": "New Lots Av",
-    # 4/5/6
     "401N": "Woodlawn",       "420S": "Bowling Green",
     "501N": "Eastchester",    "S03S": "Flatbush Av",
     "601N": "Pelham Bay",     "640S": "Brooklyn Bridge",
-    # 7
     "701N": "Flushing-Main St","726S": "Hudson Yards",
-    # SIR
     "S01N": "St George",      "S31S": "Tottenville",
 }
+
+STATIC_GTFS_URL = "http://web.mta.info/developers/data/nyct/subway/google_transit.zip"
+
+# stop_id (base, no N/S) -> sorted list of route letters
+# e.g. {"A31": ["A", "C", "E"], "G10": ["G"], ...}
+STOP_ROUTES = {}
+
+def load_static_gtfs():
+    """
+    Download MTA static GTFS zip and build a stop_id -> [routes] map.
+    MTA stop IDs in static GTFS include the N/S suffix, so we strip it.
+    We use stop_times.txt + trips.txt to map stop -> route.
+    """
+    global STOP_ROUTES
+    print("Downloading static GTFS...")
+    try:
+        resp = requests.get(STATIC_GTFS_URL, timeout=30)
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"Failed to download static GTFS: {e}")
+        return
+
+    try:
+        z = zipfile.ZipFile(io.BytesIO(resp.content))
+
+        # Build trip_id -> route_id from trips.txt
+        trip_route = {}
+        with z.open("trips.txt") as f:
+            reader = csv.DictReader(io.TextIOWrapper(f))
+            for row in reader:
+                trip_route[row["trip_id"]] = row["route_id"].strip()
+
+        # Build base_stop_id -> set of route_ids from stop_times.txt
+        stop_routes_set = defaultdict(set)
+        with z.open("stop_times.txt") as f:
+            reader = csv.DictReader(io.TextIOWrapper(f))
+            for row in reader:
+                trip_id = row["trip_id"]
+                stop_id = row["stop_id"].strip()
+                # Strip N/S suffix to get base stop ID
+                base = stop_id[:-1] if stop_id and stop_id[-1] in ("N", "S") else stop_id
+                route = trip_route.get(trip_id, "")
+                if route:
+                    stop_routes_set[base].add(route)
+
+        # Convert sets to sorted lists
+        STOP_ROUTES = {k: sorted(v) for k, v in stop_routes_set.items()}
+        print(f"Static GTFS loaded: {len(STOP_ROUTES)} stops mapped.")
+
+    except Exception as e:
+        print(f"Failed to parse static GTFS: {e}")
+
+
+# Load on startup
+load_static_gtfs()
 
 
 def get_arrivals_for_stop(feed_id, stop_id_base):
@@ -73,7 +120,6 @@ def get_arrivals_for_stop(feed_id, stop_id_base):
     stop_n = stop_id_base + "N"
     stop_s = stop_id_base + "S"
 
-    # Map trip_id -> last stop for terminal lookup
     trip_last_stop = {}
     for entity in feed.entity:
         if entity.HasField("trip_update"):
@@ -119,13 +165,26 @@ def get_arrivals():
     if err:
         return jsonify({"error": err}), 500
 
+    # Get all possible routes for this stop from static GTFS
+    possible_routes = STOP_ROUTES.get(stop, [])
+
+    # Also collect routes seen in live data (in case static is stale)
+    live_routes = set()
+    for d in ("N", "S"):
+        for a in arrivals[d]:
+            live_routes.add(a["route"])
+
+    # Merge and sort
+    all_routes = sorted(set(possible_routes) | live_routes)
+
     directions = []
     for d in ("N", "S"):
         arr = arrivals[d]
         label = arr[0]["terminal"] if arr else ("Northbound" if d == "N" else "Southbound")
         directions.append({
             "label": label,
-            "arrivals": [{"mins": a["mins"], "route": a["route"]} for a in arr]
+            "arrivals": [{"mins": a["mins"], "route": a["route"]} for a in arr],
+            "possible_routes": all_routes
         })
 
     return jsonify({
@@ -134,6 +193,16 @@ def get_arrivals():
         "directions": directions,
         "updated": datetime.now().isoformat()
     })
+
+
+@app.route("/routes")
+def get_routes():
+    """Return all possible routes for a stop, from static GTFS."""
+    stop = request.args.get("stop", "").strip().upper()
+    if not stop:
+        return jsonify({"error": "Missing param: stop"}), 400
+    routes = STOP_ROUTES.get(stop, [])
+    return jsonify({"stop": stop, "routes": routes})
 
 
 # Legacy endpoint
