@@ -20,8 +20,8 @@ FEED_URLS = {
 
 TERMINAL_NAMES = {
     "G08N": "Court Sq",        "G22S": "Church Av",
-    "A02N": "Inwood-207 St",   "H11N": "Far Rockaway",
-    "H21N": "Rockaway Park",   "A65S": "Lefferts Blvd",
+    "A02N": "Inwood-207 St",   "H11N": "Far Rockaway",  "H11S": "Far Rockaway",
+    "H21N": "Rockaway Park",   "H21S": "Rockaway Park", "A65S": "Lefferts Blvd",
     "A55S": "Euclid Av",       "G05N": "Jamaica-179 St",
     "A27S": "World Trade Ctr",
     "D01N": "Norwood-205 St",  "D43S": "Coney Island",
