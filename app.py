@@ -1,10 +1,12 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import requests
 from google.transit import gtfs_realtime_pb2
 from datetime import datetime
 import time
 
 app = Flask(__name__)
+CORS(app)
 
 FEED_URLS = {
     "ace":    "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace",
