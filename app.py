@@ -21,54 +21,61 @@ FEED_URLS = {
 TERMINAL_NAMES = {
     "G08N": "Court Sq",        "G22S": "Church Av",
     # A/C/E terminals
-    "A02N": "Inwood-207 St",   "A02S": "Inwood-207 St",
-    "A09N": "168 St",          "A09S": "168 St",
-    "A55S": "Euclid Av",       "A65S": "Lefferts Blvd",
-    "A27S": "World Trade Ctr", "E01S": "World Trade Ctr",
-    "H11N": "Far Rockaway",    "H11S": "Far Rockaway",
-    "H15N": "Rockaway Park",   "H15S": "Rockaway Park",
-    "H21N": "Rockaway Park",   "H21S": "Rockaway Park",
-    "G05N": "Jamaica Ctr",     "G05S": "Jamaica Ctr",
-    # B/D/F/M terminals
-    "D01N": "Norwood-205 St",  "D43S": "Coney Island",
-    "F01N": "Jamaica-179 St",  "F39S": "Coney Island",
-    "F35S": "Coney Island",
-    "B08N": "Lexington Av/63 St",
-    # G terminal
-    "G08N": "Court Sq",        "G08S": "Court Sq",
-    "G22S": "Church Av",       "G22N": "Church Av",
-    # M terminals
-    "M01N": "Forest Hills",    "M01S": "Forest Hills",
-    "M22S": "Middle Village",  "M22N": "Middle Village",
-    # J/Z terminals
-    "J12N": "Jamaica Ctr",     "J17S": "Broad St",
-    # L terminals
-    "L01N": "8 Av",            "L01S": "8 Av",
-    "L29S": "Canarsie",        "L29N": "Canarsie",
-    # N/Q/R/W terminals
-    "R01N": "Astoria",         "R01S": "Astoria",
-    "R44S": "Bay Ridge-95 St", "R27S": "Whitehall St",
-    "N10S": "Coney Island",    "D43S": "Coney Island",
-    "Q03S": "72 St",           "Q05N": "96 St",
-    # 1/2/3 terminals
-    "101N": "Van Cortlandt",   "142S": "South Ferry",
-    "201N": "Wakefield",       "239S": "Flatbush Av",
-    "301N": "Harlem-148 St",   "247S": "Flatbush Av",
-    # 4/5/6 terminals
-    "401N": "Woodlawn",        "420S": "Bowling Green",
-    "501N": "Eastchester",     "640S": "Brooklyn Bridge",
-    "601N": "Pelham Bay",      "423S": "Borough Hall",
-    # 7 terminals
-    "701N": "Flushing-Main St","726S": "Hudson Yards",
-    "701S": "Flushing-Main St","726N": "Hudson Yards",
-    # 3 train
-    "257S": "New Lots Av",     "257N": "New Lots Av",
+    # A/C/E
+    "A02N": "Inwood-207 St",
+    "A09N": "168 St",
+    "A55S": "Euclid Av",
+    "A65S": "Ozone Park-Lefferts Blvd",
+    "E01S": "World Trade Center",
+    "G05S": "Jamaica Center",
+    "H11S": "Far Rockaway",
+    "H15S": "Rockaway Park",
+    # B/D/F/M
+    "D01N": "Norwood-205 St",
+    "D43S": "Coney Island",
+    "F01N": "Jamaica-179 St",
+    "F39S": "Coney Island",
+    "M01N": "Forest Hills-71 Av",
+    "M22S": "Middle Village-Metropolitan Av",
+    # G
+    "G08N": "Court Sq",
+    "G21S": "Church Av",
+    # J/Z
+    "J12N": "Jamaica Center",
+    "M23S": "Broad St",
     # L
-    "L24S": "New Lots Av",
-    # 2/5 shared
-    "S03S": "Flatbush Av",
-    # SIR
-    "S01N": "St George",       "S31S": "Tottenville",
+    "L01N": "8 Av",
+    "L29S": "Canarsie",
+    # N/Q/R/W
+    "R01N": "Astoria-Ditmars Blvd",
+    "R27S": "Whitehall St",
+    "R45S": "Bay Ridge-95 St",
+    "N10S": "Coney Island",
+    "Q05N": "96 St",
+    # 1
+    "101N": "Van Cortlandt Park-242 St",
+    "142S": "South Ferry",
+    # 2
+    "201N": "Wakefield-241 St",
+    "247S": "Flatbush Av",
+    # 3
+    "301N": "Harlem-148 St",
+    "257S": "New Lots Av",
+    # 4
+    "401N": "Woodlawn",
+    "640S": "Brooklyn Bridge-City Hall",
+    # 5
+    "501N": "Eastchester-Dyre Av",
+    # 6
+    "601N": "Pelham Bay Park",
+    # 7
+    "701N": "Flushing-Main St",
+    "726S": "34 St-Hudson Yards",
+    # S shuttles
+    "901N": "Grand Central",
+    "902S": "Times Sq",
+    "S01N": "St George",
+    "S31S": "Tottenville",
 }
 
 
