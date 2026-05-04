@@ -10,6 +10,46 @@ import io
 app = Flask(__name__)
 CORS(app)
 
+# Simplify long direction labels to match MTA app style
+LABEL_SIMPLIFY = {
+    "Euclid - Lefferts - Rockaways":            "Queens",
+    "Euclid - Lefferts - Rockaways - Coney Island": "Brooklyn/Queens",
+    "Lefferts - Rockaways":                     "Queens",
+    "Uptown & The Bronx":                       "Uptown",
+    "Uptown & Queens":                          "Uptown",
+    "Uptown - Queens":                          "Uptown",
+    "Uptown & The Bronx - Queens":              "Uptown",
+    "Downtown & Brooklyn":                      "Downtown",
+    "Coney Island - Bay Ridge":                 "Brooklyn",
+    "Brighton Beach & Coney Island":            "Brooklyn",
+    "Bay Ridge - 95 St":                        "Bay Ridge",
+    "Astoria - Ditmars Blvd":                   "Astoria",
+    "Jamaica - Middle Village":                 "Jamaica",
+    "Broad St (JZ) - Uptown (M)":               "Uptown",
+    "Canarsie - Rockaway Parkway":              "Canarsie",
+    "Manhattan & Franklin Av":                  "Manhattan",
+    "Manhattan - Church Av":                    "Manhattan",
+    "Manhattan - Queens":                       "Manhattan",
+    "Euclid Av & Queens - Court Sq":            "Queens",
+    "Forest Hills - Jamaica":                   "Queens",
+    "Church Av - Coney Island":                 "Brooklyn",
+    "Flatbush - New Lots":                      "Brooklyn",
+    "Flatbush - Utica - New Lots":              "Brooklyn",
+    "Flatbush - Utica":                         "Brooklyn",
+    "Woodlawn - Eastchester Dyre Av":           "Bronx",
+    "Wakefield - Eastchester":                  "Bronx",
+    "Wakefield - 241 St":                       "Wakefield",
+    "Eastchester - Dyre Av":                    "Eastchester",
+    "Norwood - 205 St":                         "Norwood",
+    "Bedford Pk Blvd & 205 St":                 "Norwood",
+    "Pelham Bay Park":                          "Pelham Bay",
+    "34 St - Hudson Yards":                     "Hudson Yards",
+    "Astoria - Flushing":                       "Queens",
+}
+
+def simplify_label(label):
+    return LABEL_SIMPLIFY.get(label, label)
+
 # Load direction labels from MTA Stations.csv at startup
 DIRECTION_LABELS = {}  # stop_id -> {"N": label, "S": label}
 try:
@@ -17,8 +57,8 @@ try:
     reader = csv.DictReader(io.StringIO(r.text))
     for row in reader:
         stop_id = row["GTFS Stop ID"].strip()
-        n_label = row.get("North Direction Label", "").strip()
-        s_label = row.get("South Direction Label", "").strip()
+        n_label = simplify_label(row.get("North Direction Label", "").strip())
+        s_label = simplify_label(row.get("South Direction Label", "").strip())
         if stop_id:
             DIRECTION_LABELS[stop_id] = {"N": n_label, "S": s_label}
 except Exception:
