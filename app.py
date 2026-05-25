@@ -229,6 +229,128 @@ def get_arrivals():
     })
 
 
+@app.route("/dodgers")
+def get_dodgers():
+    try:
+        sched = requests.get(
+            "https://statsapi.mlb.com/api/v1/schedule"
+            "?teamId=119&sportId=1&gameType=R&hydrate=linescore,team",
+            timeout=10
+        ).json()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    months = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    game = None
+    lad_home = False
+    for date_obj in reversed(sched.get("dates", [])):
+        for g in reversed(date_obj.get("games", [])):
+            status = g.get("status", {}).get("abstractGameState", "")
+            if status not in ("Final", "Live"):
+                continue
+            home_abbr = g["teams"]["home"]["team"]["abbreviation"]
+            away_abbr = g["teams"]["away"]["team"]["abbreviation"]
+            lad_home = (home_abbr == "LAD")
+            opp_abbr = away_abbr if lad_home else home_abbr
+            lad_score = g["teams"]["home"]["score"] if lad_home else g["teams"]["away"]["score"]
+            opp_score = g["teams"]["away"]["score"] if lad_home else g["teams"]["home"]["score"]
+            ls = g.get("linescore", {})
+            lad_side = "home" if lad_home else "away"
+            opp_side = "away" if lad_home else "home"
+            lad_h = ls.get("teams", {}).get(lad_side, {}).get("hits", 0)
+            lad_e = ls.get("teams", {}).get(lad_side, {}).get("errors", 0)
+            opp_h = ls.get("teams", {}).get(opp_side, {}).get("hits", 0)
+            opp_e = ls.get("teams", {}).get(opp_side, {}).get("errors", 0)
+            dt = date_obj["date"]
+            mo, day = int(dt[5:7]), int(dt[8:10])
+            game = {
+                "gamePk": g["gamePk"],
+                "status": status.upper(),
+                "date": f"{months[mo]} {day}",
+                "oppAbbr": opp_abbr,
+                "ladScore": lad_score,
+                "oppScore": opp_score,
+                "ladH": lad_h, "ladE": lad_e,
+                "oppH": opp_h, "oppE": opp_e,
+                "ladHome": lad_home,
+            }
+            break
+        if game:
+            break
+
+    if not game:
+        return jsonify({"error": "no recent game"}), 404
+
+    # Fetch boxscore for K, LOB, OBP, performers
+    try:
+        bs = requests.get(
+            f"https://statsapi.mlb.com/api/v1/game/{game['gamePk']}/boxscore",
+            timeout=10
+        ).json()
+        lad_key = "home" if lad_home else "away"
+        opp_key = "away" if lad_home else "home"
+        teams = bs.get("teams", {})
+
+        def team_stat(side, field):
+            return teams.get(side, {}).get("teamStats", {}).get("batting", {}).get(field, 0)
+
+        game["ladK"]   = team_stat(lad_key, "strikeOuts")
+        game["ladLOB"] = team_stat(lad_key, "leftOnBase")
+        game["ladOBP"] = teams.get(lad_key, {}).get("teamStats", {}).get("batting", {}).get("obp", "")
+        game["oppK"]   = team_stat(opp_key, "strikeOuts")
+        game["oppLOB"] = team_stat(opp_key, "leftOnBase")
+        game["oppOBP"] = teams.get(opp_key, {}).get("teamStats", {}).get("batting", {}).get("obp", "")
+
+        # Top 2 LAD batters by hits, tiebreak RBI
+        batters = teams.get(lad_key, {}).get("batters", [])
+        players = teams.get(lad_key, {}).get("players", {})
+        top = []
+        for pid in batters:
+            p = players.get(f"ID{pid}", {})
+            s = p.get("stats", {}).get("batting", {})
+            h = s.get("hits", 0)
+            if h == 0:
+                continue
+            full = p.get("person", {}).get("fullName", "")
+            sp = full.find(" ")
+            name = (full[0] + ". " + full[sp+1:]) if sp > 0 else p.get("person", {}).get("boxscoreName", "?")
+            ab  = s.get("atBats", 0)
+            rbi = s.get("rbi", 0)
+            hr  = s.get("homeRuns", 0)
+            db  = s.get("doubles", 0)
+            tr  = s.get("triples", 0)
+            line = f"{h}-{ab}"
+            if hr: line += " HR"
+            if tr: line += " 3B"
+            if db: line += " 2B"
+            if rbi: line += f" {rbi}RBI"
+            top.append({"name": name, "h": h, "rbi": rbi, "line": line})
+        top.sort(key=lambda x: (x["h"], x["rbi"]), reverse=True)
+        if len(top) > 0:
+            game["star1Name"] = top[0]["name"]
+            game["star1Line"] = top[0]["line"]
+        if len(top) > 1:
+            game["star2Name"] = top[1]["name"]
+            game["star2Line"] = top[1]["line"]
+
+        # Winning pitcher
+        for side in ("home", "away"):
+            for pid in teams.get(side, {}).get("pitchers", []):
+                p = teams[side]["players"].get(f"ID{pid}", {})
+                if p.get("stats", {}).get("pitching", {}).get("wins", 0) > 0:
+                    ip = p["stats"]["pitching"].get("inningsPitched", "")
+                    er = p["stats"]["pitching"].get("earnedRuns", "")
+                    name = p.get("person", {}).get("boxscoreName", "?")
+                    game["winPitcher"] = f"W: {name} {ip}IP {er}ER"
+                    break
+            if "winPitcher" in game:
+                break
+    except Exception:
+        pass  # team stats and performers are best-effort
+
+    return jsonify(game)
+
+
 # Legacy endpoint
 @app.route("/")
 def get_trains_legacy():
