@@ -296,10 +296,10 @@ def get_dodgers():
 
         game["ladK"]   = team_stat(lad_key, "strikeOuts")
         game["ladLOB"] = team_stat(lad_key, "leftOnBase")
-        game["ladOBP"] = teams.get(lad_key, {}).get("teamStats", {}).get("batting", {}).get("obp", "")
+        game["ladOPS"] = teams.get(lad_key, {}).get("teamStats", {}).get("batting", {}).get("ops", "")
         game["oppK"]   = team_stat(opp_key, "strikeOuts")
         game["oppLOB"] = team_stat(opp_key, "leftOnBase")
-        game["oppOBP"] = teams.get(opp_key, {}).get("teamStats", {}).get("batting", {}).get("obp", "")
+        game["oppOPS"] = teams.get(opp_key, {}).get("teamStats", {}).get("batting", {}).get("ops", "")
 
         # Top 2 LAD batters by hits, tiebreak RBI
         batters = teams.get(lad_key, {}).get("batters", [])
