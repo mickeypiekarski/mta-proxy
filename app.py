@@ -351,6 +351,64 @@ def get_dodgers():
     return jsonify(game)
 
 
+# In-memory store for the surf_board pairing handoff: a device shows a
+# short code + a link to a hosted map picker; the picker POSTs the chosen
+# spot here; the device polls GET until it sees its code claimed. No
+# database on purpose — if this process restarts, pending pairings are
+# lost and the device just never finds its code, so the user reloads the
+# device's page for a fresh one. Same "tolerate failure, retry" pattern as
+# everything else this proxy already does (MTA feed fetch failures, etc).
+PICKUP_TTL_SECONDS = 600
+pickups = {}  # code (str) -> {"lat": float, "lon": float, "name": str, "expires": float}
+
+
+def _prune_expired_pickups():
+    now = time.time()
+    expired = [c for c, v in pickups.items() if v["expires"] < now]
+    for c in expired:
+        del pickups[c]
+
+
+@app.route("/pickup", methods=["POST"])
+def post_pickup():
+    data = request.get_json(silent=True) or {}
+    code = str(data.get("code", "")).strip()
+    lat = data.get("lat")
+    lon = data.get("lon")
+    name = data.get("name", "")
+
+    if not code or lat is None or lon is None:
+        return jsonify({"error": "Missing required fields: code, lat, lon"}), 400
+
+    _prune_expired_pickups()
+    pickups[code] = {
+        "lat": float(lat),
+        "lon": float(lon),
+        "name": str(name)[:64],
+        "expires": time.time() + PICKUP_TTL_SECONDS,
+    }
+    return jsonify({"ok": True})
+
+
+@app.route("/pickup", methods=["GET"])
+def get_pickup():
+    code = request.args.get("code", "").strip()
+    if not code:
+        return jsonify({"error": "Missing required param: code"}), 400
+
+    _prune_expired_pickups()
+    entry = pickups.get(code)
+    if not entry:
+        return jsonify({"claimed": False})
+
+    return jsonify({
+        "claimed": True,
+        "lat": entry["lat"],
+        "lon": entry["lon"],
+        "name": entry["name"],
+    })
+
+
 # Legacy endpoint
 @app.route("/")
 def get_trains_legacy():
